@@ -90,6 +90,23 @@ public static class TransparentAutoSetup
                 rotate.overlay = overlay;
                 rotate.target = hit[0];
             }
+
+            // Mouse-wheel zoom — drives the display-centric rig's
+            // virtualDisplayHeight (smaller = more zoom). The plugin v1.2.2+
+            // no longer self-resizes the overlay; we read the raw wheel
+            // delta via overlay.ConsumeWheelDelta() and apply it here.
+            // Camera-centric rigs (DisplayXRCamera) are skipped — vHeight
+            // is a display-rig concept.
+            var displayRig = cam.GetComponent<DisplayXRDisplay>();
+            if (displayRig != null)
+            {
+                var zoom = cam.GetComponent<WheelZoomVHeight>();
+                if (zoom == null)
+                    zoom = cam.gameObject.AddComponent<WheelZoomVHeight>();
+                zoom.overlay = overlay;
+                zoom.rig = displayRig;
+            }
+
             installed++;
         }
 
@@ -107,5 +124,51 @@ public static class TransparentAutoSetup
         // to the application's main window is suppressed.
         XRSettings.gameViewRenderMode = GameViewRenderMode.None;
         Debug.Log("[TransparentAutoSetup] XRSettings.gameViewRenderMode = None (suppress parent-window mirror).");
+    }
+}
+
+/// <summary>
+/// Drives a DisplayXRDisplay rig's virtualDisplayHeight from the
+/// transparent overlay's mouse-wheel delta. Smaller vHeight = more zoom.
+/// The window itself stays put — this is "zoom in window".
+///
+/// Multi-rig safe: only the active rig (per DisplayXRRigManager.ActiveCamera)
+/// consumes the wheel delta. Inactive rigs see 0 because the active one
+/// has already drained the native accumulator that frame.
+/// </summary>
+public class WheelZoomVHeight : MonoBehaviour
+{
+    public DisplayXRTransparentOverlay overlay;
+    public DisplayXRDisplay rig;
+
+    [Tooltip("Multiplicative scale per wheel notch (120 raw units). " +
+             "0.05 = 5% per notch — wheel forward shrinks vHeight (zoom in).")]
+    public float zoomPerNotch = 0.05f;
+
+    [Tooltip("Clamp vHeight so the user can't zoom past sane limits.")]
+    public float minVHeight = 0.05f;
+    public float maxVHeight = 5.0f;
+
+    void Update()
+    {
+        if (overlay == null || rig == null) return;
+
+        // Multi-rig gate: only the active rig drains the wheel accumulator.
+        // ActiveCamera comes from the DisplayXRRigManager static registry —
+        // same source of truth used by the rigs themselves to gate Kooima
+        // tunables. Without this, both rigs would race to ConsumeWheelDelta
+        // and the result would depend on Update execution order.
+        var cam = GetComponent<Camera>();
+        if (cam != null && DisplayXRRigManager.ActiveCamera != cam) return;
+
+        int delta = overlay.ConsumeWheelDelta();
+        if (delta == 0) return;
+
+        // Win32 WHEEL_DELTA = 120 per notch. Wheel forward (positive) →
+        // factor < 1 → smaller vHeight → cube appears bigger.
+        float notches = delta / 120f;
+        float factor = Mathf.Pow(1f - zoomPerNotch, notches);
+        rig.virtualDisplayHeight = Mathf.Clamp(
+            rig.virtualDisplayHeight * factor, minVHeight, maxVHeight);
     }
 }
