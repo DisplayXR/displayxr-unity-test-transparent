@@ -1,34 +1,51 @@
 # DisplayXR Unity Test Project — Transparent Overlay Variant
 
-A duplicate of [displayxr-unity-test](https://github.com/DisplayXR/displayxr-unity-test)
-configured to exercise the **chroma-key transparent overlay mode** added in
-[displayxr-unity #57](https://github.com/DisplayXR/displayxr-unity/issues/57).
+A test project that exercises the **chroma-key transparent overlay mode**
+of the [DisplayXR Unity plugin](https://github.com/DisplayXR/displayxr-unity)
+(added in [#57](https://github.com/DisplayXR/displayxr-unity/issues/57)).
 
 The rotating cube renders above the Windows desktop with no rectangular
 background — magenta is punched through by DWM. Clicks outside the cube's
 bounding box fall through to whatever is behind the window.
 
+**Render pipeline:** Built-in (BiRP).
+
+**Sibling test projects** — each repo focuses on one feature so a regression
+in one demo doesn't mask the others:
+
+| Repo | What it demonstrates | Pipeline |
+|---|---|---|
+| [displayxr-unity-test](https://github.com/DisplayXR/displayxr-unity-test) | Display-centric vs camera-centric rigs, live rig switching | BiRP |
+| [displayxr-unity-test-2d-ui](https://github.com/DisplayXR/displayxr-unity-test-2d-ui) | `XrCompositionLayerWindowSpaceEXT` 2D UI overlay (`DisplayXRWindowSpaceUI`) | URP |
+| [displayxr-unity-test-transparent](https://github.com/DisplayXR/displayxr-unity-test-transparent) (you are here) | Chroma-key transparent overlay (`DisplayXRTransparentOverlay`, Windows-only) | BiRP |
+
 ## What's different from displayxr-unity-test
 
-- `Packages/manifest.json` points at the **local** plugin checkout
-  (`file:../../unity-3d-display`) so it picks up the new
-  `DisplayXRTransparentOverlay` component before it ships in a tagged release.
 - `Assets/TransparentAutoSetup.cs` runs at scene load, attaches
-  `DisplayXRTransparentOverlay` to `Camera.main`, and wires the rotating cube
-  as the click-through hit region. No edits to `CubeTest.unity` needed.
+  `DisplayXRTransparentOverlay` to `Camera.main`, and wires the rotating
+  cube as the click-through hit region. No edits to `CubeTest.unity` needed.
 
 ## Requirements
 
 - **Unity 6000.3 LTS** (Unity 6) or newer
 - A **Leia SR Windows** machine for end-to-end verification (the layered-window
   path doesn't run in the editor preview — only in a Windows standalone build)
-- The DisplayXR runtime installed
-- The `unity-3d-display` repo cloned as a sibling directory:
-  ```
-  GitHub/
-  ├── unity-3d-display/                       (the plugin)
-  └── displayxr-unity-test-transparent/       (this project)
-  ```
+- The DisplayXR runtime installed (via the [installer](https://github.com/DisplayXR/displayxr-shell-releases/releases))
+
+## Plugin Reference
+
+The project depends on the DisplayXR Unity plugin via Unity Package Manager. The dependency is declared in `Packages/manifest.json`:
+
+```json
+"com.displayxr.unity": "https://github.com/DisplayXR/displayxr-unity.git#upm/v1.2.9"
+```
+
+To test against a different plugin version, edit the URL fragment (`#upm/v1.2.9`) to point at the desired tag, then run `Window → Package Manager → Refresh`.
+
+To test against a local development build of the plugin, change the dependency to:
+```json
+"com.displayxr.unity": "file:/absolute/path/to/displayxr-unity"
+```
 
 ## Quick start
 
@@ -52,6 +69,11 @@ bounding box fall through to whatever is behind the window.
 
 Comment out the body of `TransparentAutoSetup.Install()` and rebuild — the
 scene falls back to the default skybox.
+
+## Reporting Issues
+
+For plugin bugs, file issues on the [DisplayXR Unity plugin repo](https://github.com/DisplayXR/displayxr-unity/issues).
+For runtime bugs, file issues on the [DisplayXR Shell releases repo](https://github.com/DisplayXR/displayxr-shell-releases/issues).
 
 ## License
 
