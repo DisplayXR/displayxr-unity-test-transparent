@@ -81,15 +81,27 @@ public class TigerHudMouseRouter : MonoBehaviour
             return;
         }
 
-        // Hit-test wsui layer rect.
-        if (windowFrac.x < m_Wsui.positionX || windowFrac.x > m_Wsui.positionX + m_Wsui.width ||
-            windowFrac.y < m_Wsui.positionY || windowFrac.y > m_Wsui.positionY + m_Wsui.height)
+        // Map cursor → canvas position. Once a drag is in flight (left button
+        // still held + we have a press target), keep dispatching drag events
+        // even if the cursor walks off the panel — Unity's Slider clamps the
+        // canvas position to its own rect internally, so the slider value
+        // tracks the horizontal cursor motion all the way to the screen edge.
+        // Drag ends only on left-up (handled below) or on mouse-release-off-
+        // window (handled by TryGetWindowMouseFractional returning false).
+        bool dragging = m_LeftDown && m_PressTarget != null;
+        bool insidePanel =
+            windowFrac.x >= m_Wsui.positionX && windowFrac.x <= m_Wsui.positionX + m_Wsui.width &&
+            windowFrac.y >= m_Wsui.positionY && windowFrac.y <= m_Wsui.positionY + m_Wsui.height;
+
+        if (!insidePanel && !dragging)
         {
-            DisplayXRWindowSpaceUI.IsCursorOverInteractive = m_PressTarget != null;
-            ReleaseIfDown();
+            // Outside the panel and not mid-drag — let scene input through.
+            DisplayXRWindowSpaceUI.IsCursorOverInteractive = false;
             return;
         }
 
+        // Compute canvas position from the (possibly out-of-panel) cursor.
+        // Slider.OnDrag clamps internally, so unclamped values here are fine.
         float panelFracX = (windowFrac.x - m_Wsui.positionX) / m_Wsui.width;
         float panelFracY = (windowFrac.y - m_Wsui.positionY) / m_Wsui.height;
         var canvasPos = new Vector2(

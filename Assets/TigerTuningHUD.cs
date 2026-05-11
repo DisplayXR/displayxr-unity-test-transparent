@@ -36,9 +36,9 @@ public class TigerTuningHUD : MonoBehaviour
     [Header("Layer placement (fractional window coords)")]
     // Narrow + slim panel, roughly centered horizontally, lower-third
     // vertically. Tweakable via inspector (changes propagate via Update).
-    [Range(0f, 1f)] public float panelX = 0.36f;
+    [Range(0f, 1f)] public float panelX = 0.43f;
     [Range(0f, 1f)] public float panelY = 0.66f;
-    [Range(0f, 1f)] public float panelWidth = 0.28f;
+    [Range(0f, 1f)] public float panelWidth = 0.14f;
     [Range(0f, 1f)] public float panelHeight = 0.18f;
     [Range(-0.05f, 0.05f)] public float disparity;
 
@@ -54,10 +54,10 @@ public class TigerTuningHUD : MonoBehaviour
     private const float kDepthMax = 1.0f;
     private const float kDepthDefault = 1.0f;
 
-    // RT aspect matches the panel aspect (wide + short) so vertical layout
-    // doesn't get squished when the runtime stretches RT → panel rect.
+    // RT aspect matches the panel aspect (~1.23:1 for the slim centered
+    // box) so the runtime's RT → panel-rect stretch doesn't squish text.
     private const int kRTWidth = 1024;
-    private const int kRTHeight = 384;
+    private const int kRTHeight = 800;
 
     private Camera m_Cam;
     private float m_InitialCamZ;
@@ -69,7 +69,9 @@ public class TigerTuningHUD : MonoBehaviour
     private Font m_Font;
 
     private GameObject m_CanvasGO;
-    private bool m_UIVisible = true;
+    // Start hidden — user reveals with SHIFT+TAB. Tuning is a power-user
+    // feature; the default first-launch view is the tiger sans UI.
+    private bool m_UIVisible = false;
 
     // -----------------------------------------------------------------------
     // Auto-install: drop a fresh HUD GameObject into every loaded scene so
@@ -146,8 +148,8 @@ public class TigerTuningHUD : MonoBehaviour
         panelImg.color = new Color(0f, 0f, 0f, 0.20f); // 80% transparent black
 
         var layout = panelGO.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(30, 30, 30, 30);
-        layout.spacing = 16;
+        layout.padding = new RectOffset(50, 50, 50, 50);
+        layout.spacing = 30;
         layout.childAlignment = TextAnchor.UpperLeft;
         layout.childControlWidth = true;
         layout.childControlHeight = false;
@@ -155,11 +157,11 @@ public class TigerTuningHUD : MonoBehaviour
         layout.childForceExpandHeight = false;
 
         // ---- title ----
-        var title = MakeText(panelGO.transform, "Title", "Tuning", 36, FontStyle.Bold);
+        var title = MakeText(panelGO.transform, "Title", "Tuning", 56, FontStyle.Bold);
         title.color = Color.white;
         title.alignment = TextAnchor.MiddleCenter;
         var titleLE = title.gameObject.AddComponent<LayoutElement>();
-        titleLE.preferredHeight = 50;
+        titleLE.preferredHeight = 90;
 
         // ---- 3D Focus (camera world-Z; same as W/S) ----
         BuildSliderRow(panelGO.transform, "3D Focus",
@@ -341,9 +343,9 @@ public class TigerTuningHUD : MonoBehaviour
     {
         var rowGO = MakeUIObject(label + "Row", parent);
         var rowLE = rowGO.AddComponent<LayoutElement>();
-        rowLE.preferredHeight = 110;
+        rowLE.preferredHeight = 200;
 
-        var labelText = MakeText(rowGO.transform, "Label", label, 28, FontStyle.Normal);
+        var labelText = MakeText(rowGO.transform, "Label", label, 44, FontStyle.Normal);
         labelText.color = new Color(0.75f, 0.78f, 0.85f, 1f);
         var labelRT = labelText.GetComponent<RectTransform>();
         labelRT.anchorMin = new Vector2(0, 0.55f);
@@ -351,7 +353,7 @@ public class TigerTuningHUD : MonoBehaviour
         labelRT.offsetMin = Vector2.zero;
         labelRT.offsetMax = Vector2.zero;
 
-        valueText = MakeText(rowGO.transform, "Value", initial.ToString("0.00"), 28, FontStyle.Bold);
+        valueText = MakeText(rowGO.transform, "Value", initial.ToString("0.00"), 44, FontStyle.Bold);
         valueText.alignment = TextAnchor.MiddleRight;
         var valueRT = valueText.GetComponent<RectTransform>();
         valueRT.anchorMin = new Vector2(0.65f, 0.55f);
@@ -392,7 +394,7 @@ public class TigerTuningHUD : MonoBehaviour
 
         // Circular knob — slide-area sets the handle's rendered height, so
         // its sizeDelta.y IS the handle diameter.
-        const int kHandleSize = 26;
+        const int kHandleSize = 40;
         var handleAreaGO = MakeUIObject("Handle Slide Area", sliderGO.transform);
         var handleAreaRT = handleAreaGO.GetComponent<RectTransform>();
         handleAreaRT.anchorMin = new Vector2(0, 0.5f);
