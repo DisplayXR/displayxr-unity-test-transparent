@@ -223,23 +223,60 @@ public class TigerTuningHUD : MonoBehaviour
             wsui.disparity = disparity;
         }
 
-        // SHIFT+TAB or H toggles visibility. Plain Tab is bound by
+        // SHIFT+TAB toggles visibility. Plain Tab is bound by
         // DisplayXRRigManager.CycleNext for camera cycling, so SHIFT gates
-        // it. H is an alternative for keyboards where SHIFT+TAB doesn't
-        // come through (e.g. transparent-mode cloaked-window IME quirks).
+        // it.
+        //
+        // Gate on our process owning the foreground window: in
+        // transparent-overlay builds runInBackground=true and the plugin
+        // requests raw input via RIDEV_INPUTSINK so the cube/HUD stay
+        // live when the window is defocused. Side-effect: Keyboard.current
+        // sees every keystroke system-wide, including the user typing in
+        // another app they clicked through to. Without this gate, hitting
+        // SHIFT+TAB while typing in Notepad would pop the HUD back over
+        // the tiger.
+        //
+        // We can't compare GetForegroundWindow().class to "DisplayXROverlay"
+        // because the overlay HWND has WS_EX_NOACTIVATE — it never claims
+        // foreground itself. Instead the plugin exposes
+        // displayxr_is_our_process_foreground() which checks every window
+        // owned by our process (Unity's cloaked HWND + the overlay) against
+        // the foreground HWND's PID. Same signal DisplayXRInputController
+        // uses to gate WASD movement, so SHIFT+TAB and W/S now share the
+        // same "our app is focused" definition.
         var kb = Keyboard.current;
-        if (kb != null && m_CanvasGO != null)
+        if (kb != null && m_CanvasGO != null && IsOurProcessForeground())
         {
             bool shiftTab = kb.tabKey.wasPressedThisFrame &&
                             (kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed);
-            bool hKey = kb.hKey.wasPressedThisFrame;
-            if (shiftTab || hKey)
+            if (shiftTab)
             {
                 m_UIVisible = !m_UIVisible;
                 m_CanvasGO.SetActive(m_UIVisible);
-                Debug.Log($"[TigerTuningHUD] toggle via {(shiftTab ? "SHIFT+TAB" : "H")} → visible={m_UIVisible}");
+                Debug.Log($"[TigerTuningHUD] toggle via SHIFT+TAB → visible={m_UIVisible}");
             }
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Foreground gate for keyboard input (see Update for rationale).
+    // displayxr_is_our_process_foreground() is exported from the plugin's
+    // native DLL (DISPLAYXR_EXPORT, native~/displayxr_hooks.h:207). It
+    // walks every window in our process and returns 1 if any of them is
+    // the OS foreground window. Same signal DisplayXRInputController uses
+    // for WASD gating.
+    // -----------------------------------------------------------------------
+    [System.Runtime.InteropServices.DllImport("displayxr_unity",
+        CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+    private static extern int displayxr_is_our_process_foreground();
+
+    private static bool IsOurProcessForeground()
+    {
+        // Fail-open if the symbol is missing (older plugin binary, editor
+        // context where the native lib hasn't loaded yet) — never block
+        // the user out of their own HUD because of a probe failure.
+        try { return displayxr_is_our_process_foreground() != 0; }
+        catch { return true; }
     }
 
     // ------------------------------------------------------------------------
