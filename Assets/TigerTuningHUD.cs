@@ -36,10 +36,15 @@ public class TigerTuningHUD : MonoBehaviour
     [Header("Layer placement (fractional window coords)")]
     // Narrow + slim panel, roughly centered horizontally, lower-third
     // vertically. Tweakable via inspector (changes propagate via Update).
+    // Panel is positioned so its bottom edge stays at ~0.81 (just below the
+    // tiger's lower body). Height is the canvas RT height (650) projected
+    // back to fractional window units at the same per-canvas-unit screen
+    // scale we used before (0.146 ≈ 0.18 × 650/800), so slider knobs and
+    // text render at the same visible size as the original 0.18 panel.
     [Range(0f, 1f)] public float panelX = 0.43f;
     [Range(0f, 1f)] public float panelY = 0.66f;
     [Range(0f, 1f)] public float panelWidth = 0.14f;
-    [Range(0f, 1f)] public float panelHeight = 0.18f;
+    [Range(0f, 1f)] public float panelHeight = 0.146f;
     [Range(-0.05f, 0.05f)] public float disparity;
 
     // 3D Focus drives camera.transform.position.z relative to the rig's
@@ -54,10 +59,11 @@ public class TigerTuningHUD : MonoBehaviour
     private const float kDepthMax = 1.0f;
     private const float kDepthDefault = 1.0f;
 
-    // RT aspect matches the panel aspect (~1.23:1 for the slim centered
-    // box) so the runtime's RT → panel-rect stretch doesn't squish text.
+    // RT height matches the content stack so there's no dead space below
+    // the bottom slider: title (90) + spacing (30) + 2× row (200) + spacing
+    // (30) + top/bottom padding (50+50) = 650. Width unchanged.
     private const int kRTWidth = 1024;
-    private const int kRTHeight = 800;
+    private const int kRTHeight = 650;
 
     private Camera m_Cam;
     private float m_InitialCamZ;
@@ -152,7 +158,10 @@ public class TigerTuningHUD : MonoBehaviour
         layout.spacing = 30;
         layout.childAlignment = TextAnchor.UpperLeft;
         layout.childControlWidth = true;
-        layout.childControlHeight = false;
+        // Respect LayoutElement.preferredHeight on title + slider rows so
+        // they take their declared sizes (90, 200, 200) and the panel hugs
+        // the content tightly instead of leaving dead space at the bottom.
+        layout.childControlHeight = true;
         layout.childForceExpandWidth = true;
         layout.childForceExpandHeight = false;
 
@@ -401,14 +410,20 @@ public class TigerTuningHUD : MonoBehaviour
         fillGO.AddComponent<Image>().color = new Color(0.29f, 0.62f, 1.0f, 1f);
 
         // Circular knob — slide-area sets the handle's rendered height, so
-        // its sizeDelta.y IS the handle diameter.
-        const int kHandleSize = 40;
+        // its sizeDelta.y IS the handle diameter. At a 0.14-fractional panel
+        // width on a 1920px window, 40px on a 1024px RT renders at ~10
+        // screen px — too small to click reliably. 80 is roughly a 20-px
+        // target, which is the smallest that's comfortable to grab.
+        const int kHandleSize = 80;
         var handleAreaGO = MakeUIObject("Handle Slide Area", sliderGO.transform);
         var handleAreaRT = handleAreaGO.GetComponent<RectTransform>();
         handleAreaRT.anchorMin = new Vector2(0, 0.5f);
         handleAreaRT.anchorMax = new Vector2(1, 0.5f);
         handleAreaRT.pivot = new Vector2(0.5f, 0.5f);
-        handleAreaRT.sizeDelta = new Vector2(-20, kHandleSize);
+        // X inset is -kHandleSize/2 so the knob's edge aligns with the
+        // slider extremes — keeps the knob from over-traveling past the
+        // fill rect at min/max value.
+        handleAreaRT.sizeDelta = new Vector2(-kHandleSize / 2, kHandleSize);
 
         var handleGO = MakeUIObject("Handle", handleAreaGO.transform);
         var handleRT = handleGO.GetComponent<RectTransform>();
