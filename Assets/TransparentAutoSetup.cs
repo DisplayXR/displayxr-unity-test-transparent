@@ -76,6 +76,25 @@ public static class TransparentAutoSetup
                       || cam.GetComponent<DisplayXRCamera>() != null;
             if (!isRig) continue;
 
+            // In tiger / cube transparent-overlay mode we want left-drag
+            // reserved for the app's hit-tested interactions (DragRotateCube
+            // on the tiger). Disable DisplayXRInputController's built-in
+            // left-drag camera-look so it doesn't compound with DragRotateCube
+            // when clicking on the target (double-speed rotation) or sneak in
+            // a camera rotation when clicking off-target. WASD movement stays.
+            var ctrl = cam.GetComponent<DisplayXRInputController>();
+            if (ctrl != null)
+            {
+                // Left-drag reserved for the app's hit-tested rotate-target
+                // (DragRotateCube on the tiger). Scroll-zoom replaced by
+                // WheelZoomVHeight driving DisplayXRDisplay.virtualDisplayHeight
+                // — a zoom-in-window behavior more appropriate for the
+                // avatar use case than the controller's camera-transform
+                // scale / FOV change.
+                ctrl.mouseLookEnabled = false;
+                ctrl.scrollZoomEnabled = false;
+            }
+
             var overlay = cam.GetComponent<DisplayXRTransparentOverlay>();
             if (overlay == null)
                 overlay = cam.gameObject.AddComponent<DisplayXRTransparentOverlay>();
