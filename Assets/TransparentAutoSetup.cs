@@ -175,6 +175,19 @@ public static class TransparentAutoSetup
         // to the application's main window is suppressed.
         XRSettings.gameViewRenderMode = GameViewRenderMode.None;
         Debug.Log("[TransparentAutoSetup] XRSettings.gameViewRenderMode = None (suppress parent-window mirror).");
+
+#if UNITY_STANDALONE_OSX
+        // Hide the NSWindow title bar / close / minimize / resize chrome for
+        // the avatar look. Plugin v1.5.10+. Drag stays via the cursor-anchored
+        // API used by MacRightDragMoveWindow.
+        //
+        // Dispatched onto the AppKit main queue inside the native function, so
+        // the call ordering vs configure_unity_nswindow (kicked off by the
+        // overlay's OnEnable a few lines above) is preserved. configure runs
+        // first → window is located; then borderless flips the styleMask.
+        DisplayXRNative.displayxr_macos_set_window_borderless(1);
+        Debug.Log("[TransparentAutoSetup] macOS NSWindow set borderless.");
+#endif
     }
 }
 
