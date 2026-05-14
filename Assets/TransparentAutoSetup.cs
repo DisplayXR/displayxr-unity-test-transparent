@@ -15,7 +15,9 @@ public static class TransparentAutoSetup
     // Near-mid-gray instead of magenta so silhouette-edge halos blend
     // invisibly into typical desktop backgrounds. Single source of truth —
     // both RequestChromaKey (runtime post-weave pass) and the component's
-    // chromaKeyColor field (camera clear + LWA_COLORKEY) read it.
+    // chromaKeyColor field (Unity camera clear) read it. No OS color key
+    // is involved — overlay HWND is WS_EX_NOREDIRECTIONBITMAP + DComp, and
+    // the runtime DP converts chroma RGB to alpha=0 in its post-weave pass.
     // Trade-off: avatar/cube pixels that land exactly on (128,127,129) will
     // go transparent — keep materials clear of this color.
     static readonly Color s_ChromaKey = new Color(128f / 255f, 127f / 255f, 129f / 255f, 0f);
