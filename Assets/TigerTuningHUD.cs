@@ -223,6 +223,40 @@ public class TigerTuningHUD : MonoBehaviour
             wsui.disparity = disparity;
         }
 
+        // Mirror the camera's current Z back into the Focus slider so W/S
+        // (driven by the plugin's DisplayXRInputController) and the slider
+        // stay in agreement — both write m_Cam.transform.position.z, but the
+        // slider was previously write-only, so W/S moves left the knob stale
+        // and the next slider touch stomped the W/S offset. SetValueWithoutNotify
+        // updates the knob + readout WITHOUT re-firing onValueChanged (which
+        // would write the camera Z straight back and fight the input controller).
+        if (m_Cam != null && m_FocusSlider != null)
+        {
+            float zOffset = m_Cam.transform.position.z - m_InitialCamZ;
+            float clamped = Mathf.Clamp(zOffset, -kFocusRange, kFocusRange);
+            if (!Mathf.Approximately(clamped, m_FocusSlider.value))
+            {
+                m_FocusSlider.SetValueWithoutNotify(clamped);
+                if (m_FocusValueText != null)
+                    m_FocusValueText.text = clamped.ToString("+0.00;-0.00;0.00") + " m";
+            }
+        }
+
+        // Same read-back for the Depth slider: mirror the rig's current
+        // ipdFactor back into the knob so any other input that writes
+        // ipdFactor/parallaxFactor stays reflected here. ipdFactor is the
+        // canonical value (the callback sets both factors to v).
+        if (displayRig != null && m_StereoSlider != null)
+        {
+            float depth = Mathf.Clamp(displayRig.ipdFactor, kDepthMin, kDepthMax);
+            if (!Mathf.Approximately(depth, m_StereoSlider.value))
+            {
+                m_StereoSlider.SetValueWithoutNotify(depth);
+                if (m_StereoValueText != null)
+                    m_StereoValueText.text = depth.ToString("0.00");
+            }
+        }
+
         // SHIFT+TAB toggles visibility. Plain Tab is bound by
         // DisplayXRRigManager.CycleNext for camera cycling, so SHIFT gates
         // it.
