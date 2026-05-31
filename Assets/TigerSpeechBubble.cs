@@ -169,6 +169,12 @@ public class TigerSpeechBubble : MonoBehaviour
         // and clear the sub-rect, snapping the tiger back to full-window.
         canvasGO.SetActive(true);
         m_BubbleRT.gameObject.SetActive(m_Visible);
+
+        // DIAG: prove which build is running. If you don't see this line in
+        // Player.log with width≈50% and tail=True, the player is stale — rebuild.
+        Debug.Log($"[TigerSpeechBubble] BUILD v2 (comic): panel={prt.sizeDelta.x:F0}x{prt.sizeDelta.y:F0}px " +
+                  $"= {(prt.sizeDelta.x / Mathf.Max(1, m_PanelW)):P0} of window {m_PanelW}x{m_PanelH}; " +
+                  $"tail={(tailGO != null)} ({trt.sizeDelta.x:F0}x{trt.sizeDelta.y:F0}px); cornerRadius=30");
     }
 
     void Update()
