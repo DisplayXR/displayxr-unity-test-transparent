@@ -48,6 +48,14 @@ public class DragRotateCube : MonoBehaviour
             m_BoundOverlay = active;
         }
 
+        // Region editor owns the mouse (Layout mode or a window translate)?
+        // Don't also rotate the tiger while the user edits the window.
+        if (TigerSpeechBubble.SuppressSceneInput)
+        {
+            if (m_Dragging) m_Dragging = false; // cancel any in-flight drag
+            return;
+        }
+
         // Cursor over the wsui HUD? Let the UI own all interaction.
         // TigerHudMouseRouter sets this flag while the cursor is inside
         // the panel rect; without the gate we'd both drive the slider AND
@@ -88,6 +96,8 @@ public class DragRotateCube : MonoBehaviour
         // both fire causes the tiger to rotate-then-reset as the window
         // chases the cursor during right-drag.
         if (m_BoundOverlay == null || !m_BoundOverlay.IsLeftPressed) return;
+        // Suppress while the region editor owns the mouse (Layout mode / translate).
+        if (TigerSpeechBubble.SuppressSceneInput) return;
         // Suppress when cursor is over the wsui HUD — the overlay's hit-test
         // is screen-space and doesn't know the HUD is occluding the tiger.
         if (DisplayXRWindowSpaceUI.IsCursorOverInteractive) return;
