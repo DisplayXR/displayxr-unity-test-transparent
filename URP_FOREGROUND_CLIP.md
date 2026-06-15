@@ -29,7 +29,10 @@ Enforce the clip per-eye in **screen space** after the scene renders:
    `_DXRForegroundFar` global each frame, and forces the rig camera's far large so
    each eye renders the whole scene (defeating the rig's single-far clamp).
 3. `DisplayXRForegroundClipURP.shader` (run via URP's built-in
-   **FullScreenPassRendererFeature**, AfterRenderingTransparents) reconstructs each
+   **FullScreenPassRendererFeature**, BeforeRenderingPostProcessing — URP 17 has no
+   AfterRenderingTransparents injection point; this is the first slot after the
+   transparent queue, and the opaque overlay is fully in the depth buffer by then)
+   reconstructs each
    fragment's view-space eye Z from the depth texture and writes transparent black
    for anything farther than **that eye's** `far_eff`. Multipass → `unity_StereoEyeIndex`
    selects the eye. Color **and** alpha are zeroed (alpha-only was the #129 failure).
@@ -51,8 +54,9 @@ a URP-guarded assembly) so every app gets per-eye URP foreground clip for free.
    dialog says auto-wiring didn't complete, do the 3 manual clicks it lists:
    - Select `Assets/Settings/URP-Renderer.asset`
    - **Add Renderer Feature → Full Screen Pass Renderer Feature**
-   - Pass Material = `DXRForegroundClip`, Injection Point = **After Rendering
-     Transparents**, Requirements = **Depth**
+   - Pass Material = `DXRForegroundClip`, Injection Point = **Before Rendering
+     Post Processing** (URP 17 has no "After Rendering Transparents"; this is the
+     first point after the transparent queue), Requirements = **Depth**
 
 ## Testing
 
@@ -65,6 +69,29 @@ a URP-guarded assembly) so every app gets per-eye URP foreground clip for free.
 - Enable `diagnosticLog` on the driver to print `farL`/`farR` and their
   disagreement (Δmm). Off-axis head positions should show a non-zero Δ — that's
   exactly the per-eye difference the single-far path got wrong.
+
+## Validation status (2026-06-14, Win64 / RTX 3080 / D3D12)
+
+Headless build + run on this machine against the installed DisplayXR runtime
+(active OpenXR runtime, advertises **`XR_EXT_view_rig` Version=2**):
+
+- ✅ C# + shader compile clean; `DisplayXR/ForegroundClipURP` is built into the Player.
+- ✅ `URPSetupBootstrap` creates the URP pipeline (depth texture on); Built-in→URP
+  material upgrade runs; the **Full Screen Pass feature auto-wires** into
+  `URP-Renderer.asset` (injection `BeforeRenderingPostProcessing`, requirements
+  `Depth`, `fetchColorBuffer` on, material `DXRForegroundClip`).
+- ✅ Driver installs at scene load; `_DXRForegroundFar` published every frame with
+  **`enable=1`** and both per-eye fars recovered as real values
+  (`farL=farR=11.41 m`, i.e. `eye.z`, not the 1000 m render override) — confirms
+  `foregroundOnlyClip` is active and the `m23/(m22+1)` recovery works for both eyes.
+- ✅ Clean run, **no exceptions** (fixed the legacy-`Input` crash — this project is
+  Input System only; the C-toggle now uses `Keyboard.current`).
+
+Δmm reads **0.0 on-axis** with no face at the eye-tracker (head centered →
+each eye sees the plane at the same `eye.z` — correct baseline, not a bug).
+**Still needs a human at the hardware:** the off-axis Δ growth, the visual stereo
+result (tiger clips on both eyes, no residue), and the C-toggle visual. Enable the
+log for those with `DXR_FGCLIP_DIAG=1` (env) or the driver's `diagnosticLog` field.
 
 ## Validation checklist
 

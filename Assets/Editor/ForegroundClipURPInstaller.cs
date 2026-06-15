@@ -25,15 +25,23 @@ internal static class ForegroundClipURPInstaller
     const string kFeatureName = "DisplayXR Foreground Clip";
 
     [MenuItem("DisplayXR/Setup URP Foreground Clip")]
-    static void Setup()
+    static void Setup() => Install(interactive: true);
+
+    /// <summary>
+    /// Core setup, callable headlessly (interactive=false suppresses the dialogs so
+    /// it works under -batchmode -executeMethod). Returns true if the renderer
+    /// feature was wired; false means the material exists but manual wiring is needed.
+    /// </summary>
+    internal static bool Install(bool interactive)
     {
         var shader = Shader.Find(kShaderName);
         if (shader == null)
         {
-            EditorUtility.DisplayDialog("Foreground Clip",
-                $"Shader '{kShaderName}' not found. Make sure " +
-                "Assets/DisplayXRForegroundClipURP.shader imported without errors.", "OK");
-            return;
+            string msg = $"Shader '{kShaderName}' not found. Make sure " +
+                "Assets/DisplayXRForegroundClipURP.shader imported without errors.";
+            if (interactive) EditorUtility.DisplayDialog("Foreground Clip", msg, "OK");
+            else Debug.LogError("[ForegroundClipURP] " + msg);
+            return false;
         }
 
         // 1. Material (reliable).
@@ -58,29 +66,31 @@ internal static class ForegroundClipURPInstaller
             "  1. Select Assets/Settings/URP-Renderer.asset\n" +
             "  2. Add Renderer Feature → Full Screen Pass Renderer Feature\n" +
             "  3. Pass Material = DXRForegroundClip,\n" +
-            "     Injection Point = After Rendering Transparents,\n" +
+            "     Injection Point = Before Rendering Post Processing,\n" +
             "     Requirements = Depth";
 
         if (rendererData == null)
         {
-            EditorUtility.DisplayDialog("Foreground Clip",
-                "Material created at " + kMaterialPath + ".\n\n" +
+            string msg = "Material created at " + kMaterialPath + ".\n\n" +
                 "Couldn't find URP-Renderer.asset (open the project once so " +
-                "URPSetupBootstrap creates it), then:\n\n" + manual, "OK");
-            return;
+                "URPSetupBootstrap creates it), then:\n\n" + manual;
+            if (interactive) EditorUtility.DisplayDialog("Foreground Clip", msg, "OK");
+            else Debug.LogWarning("[ForegroundClipURP] " + msg);
+            return false;
         }
 
         bool added;
         try { added = TryAddFullScreenFeature(rendererData, mat); }
         catch (Exception e) { Debug.LogWarning("[ForegroundClipURP] auto-wire failed: " + e.Message); added = false; }
 
-        EditorUtility.DisplayDialog("Foreground Clip",
-            added
+        string result = added
               ? "Done. Material + Full Screen Pass feature wired into " + rendererData.name + ".\n\n" +
                 "Run the scene and press C to toggle the clip."
               : "Material created at " + kMaterialPath + ".\n\n" +
-                "Auto-wiring the renderer feature didn't complete — do it manually:\n\n" + manual,
-            "OK");
+                "Auto-wiring the renderer feature didn't complete — do it manually:\n\n" + manual;
+        if (interactive) EditorUtility.DisplayDialog("Foreground Clip", result, "OK");
+        else Debug.Log("[ForegroundClipURP] " + (added ? "auto-wired Full Screen Pass feature." : result));
+        return added;
     }
 
     static ScriptableRendererData FindRendererData()
@@ -139,35 +149,24 @@ internal static class ForegroundClipURPInstaller
         return true;
     }
 
-    // FullScreenPassRendererFeature exposes these as public fields in URP 17.
+    // FullScreenPassRendererFeature exposes these as PUBLIC fields in URP 17, so set
+    // them directly — no SerializedObject name-guessing or fragile enum intValues.
+    //
+    // NOTE: URP 17.0.4's InjectionPoint enum has only THREE members and NO
+    // AfterRenderingTransparents — { BeforeRenderingTransparents=450,
+    // BeforeRenderingPostProcessing=550, AfterRenderingPostProcessing=600 } (the
+    // values are RenderPassEvent ints, not 0/1/2). The overlay content (tiger/cube)
+    // is opaque, so the depth + color buffers are fully populated by the time
+    // transparents finish; BeforeRenderingPostProcessing is the first injection point
+    // after the transparent queue and is the correct "after everything is drawn"
+    // slot here. (The old intValue=1 mapped to no valid enum member.)
     static void ConfigureFeature(FullScreenPassRendererFeature feature, Material mat)
     {
-        var fso = new SerializedObject(feature);
-        SetIfPresent(fso, "passMaterial", mat);
-        // InjectionPoint enum: 0 BeforeRenderingTransparents, 1 AfterRenderingTransparents,
-        // 2 AfterRenderingPostProcessing. Clip after transparents so the whole overlay
-        // (opaque tiger/cube) is present in the depth buffer.
-        SetEnumIfPresent(fso, "injectionPoint", 1);
-        // ScriptableRenderPassInput.Depth == 4 (Color=1, Depth=4, Normal=8, Motion=16).
-        SetEnumIfPresent(fso, "requirements", (int)ScriptableRenderPassInput.Depth);
-        SetIntIfPresent(fso, "passIndex", 0);
-        fso.ApplyModifiedPropertiesWithoutUndo();
+        feature.passMaterial = mat;
+        feature.injectionPoint = FullScreenPassRendererFeature.InjectionPoint.BeforeRenderingPostProcessing;
+        feature.requirements = ScriptableRenderPassInput.Depth;
+        feature.fetchColorBuffer = true;  // binds camera color to _BlitTexture for passthrough
+        feature.passIndex = 0;
         EditorUtility.SetDirty(feature);
-    }
-
-    static void SetIfPresent(SerializedObject so, string name, UnityEngine.Object val)
-    {
-        var p = so.FindProperty(name);
-        if (p != null) p.objectReferenceValue = val;
-    }
-    static void SetEnumIfPresent(SerializedObject so, string name, int val)
-    {
-        var p = so.FindProperty(name);
-        if (p != null) p.intValue = val;
-    }
-    static void SetIntIfPresent(SerializedObject so, string name, int val)
-    {
-        var p = so.FindProperty(name);
-        if (p != null) p.intValue = val;
     }
 }

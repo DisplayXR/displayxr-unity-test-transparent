@@ -22,8 +22,11 @@
 // single-far approximation.
 //
 // Authored for Unity's built-in FullScreenPassRendererFeature (URP 17 / Unity 6):
-// inject AfterRenderingTransparents, Requirements = Depth. The feature binds the
-// camera color to _BlitTexture and the Vert/Varyings come from URP's Blit.hlsl.
+// inject BeforeRenderingPostProcessing (URP 17's InjectionPoint enum has no
+// AfterRenderingTransparents — this is the first slot after the transparent queue;
+// the opaque overlay is fully in depth+color by then), Requirements = Depth. The
+// feature binds the camera color to _BlitTexture and Vert/Varyings come from
+// URP's Blit.hlsl.
 Shader "DisplayXR/ForegroundClipURP"
 {
     SubShader
@@ -66,8 +69,8 @@ Shader "DisplayXR/ForegroundClipURP"
 
                 // Per-eye far: multipass renders each eye in its own pass, so
                 // unity_StereoEyeIndex selects which eye's foreground far applies.
-                float farEff = (unity_StereoEyeIndex == 0u) ? _DXRForegroundFar.x
-                                                            : _DXRForegroundFar.y;
+                float farEff = (unity_StereoEyeIndex == 0) ? _DXRForegroundFar.x
+                                                           : _DXRForegroundFar.y;
 
                 // Behind the virtual display plane → cut it away (color AND alpha
                 // zeroed; alpha-only left the geometry visible — the #129 failure).

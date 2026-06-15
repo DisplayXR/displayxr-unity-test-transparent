@@ -20,6 +20,7 @@
 // Self-installs at scene load; press C to toggle the clip live.
 
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using DisplayXR;
 
@@ -48,7 +49,7 @@ public class ForegroundClipURPDriver : MonoBehaviour
     static void AutoInstall()
     {
         if (GraphicsSettings.currentRenderPipeline == null) return; // BiRP → skip
-        if (FindFirstObjectByType<ForegroundClipURPDriver>() != null) return;
+        if (FindAnyObjectByType<ForegroundClipURPDriver>() != null) return;
         var go = new GameObject("DXR Foreground Clip Driver (URP)");
         Object.DontDestroyOnLoad(go);
         go.AddComponent<ForegroundClipURPDriver>();
@@ -57,6 +58,12 @@ public class ForegroundClipURPDriver : MonoBehaviour
 
     void OnEnable()
     {
+        // The driver auto-spawns at runtime (not a scene object), so its inspector
+        // toggles can't be set before a build. Allow enabling the per-eye far log
+        // from the environment for headless validation: DXR_FGCLIP_DIAG=1.
+        if (System.Environment.GetEnvironmentVariable("DXR_FGCLIP_DIAG") == "1")
+            diagnosticLog = true;
+
         m_Feature = DisplayXRFeature.Instance;
         // Run AFTER the rig's OnSRPBeginCamera (it subscribes in its own OnEnable
         // at scene load; we subscribe later) so our farClipPlane reset wins over
@@ -74,7 +81,11 @@ public class ForegroundClipURPDriver : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.C))
+        // This project uses the Input System package (Active Input Handling = Input
+        // System), so legacy UnityEngine.Input.GetKeyDown throws — read the C key via
+        // Keyboard.current like the repo's other scripts (TigerSpeechBubble, HUD).
+        var kb = Keyboard.current;
+        if (kb != null && kb.cKey.wasPressedThisFrame)
         {
             clipEnabled = !clipEnabled;
             Debug.Log($"[ForegroundClipURP] clip {(clipEnabled ? "ON" : "OFF")}");

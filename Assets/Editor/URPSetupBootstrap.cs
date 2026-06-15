@@ -43,6 +43,13 @@ internal static class URPSetupBootstrap
         EditorApplication.delayCall += TrySetup;
     }
 
+    /// <summary>
+    /// Synchronous entry point for headless automation (-executeMethod). In
+    /// -batchmode -quit the editor exits before the delayCall fires, so the
+    /// automation driver calls this directly to guarantee the URP assets exist.
+    /// </summary>
+    internal static void EnsureSetup() => TrySetup();
+
     private static void TrySetup()
     {
         EditorApplication.delayCall -= TrySetup;
