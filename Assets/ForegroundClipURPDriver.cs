@@ -28,6 +28,8 @@ using DisplayXR;
 public class ForegroundClipURPDriver : MonoBehaviour
 {
     static readonly int s_ForegroundFarId = Shader.PropertyToID("_DXRForegroundFar");
+    static readonly int s_EyePosLId = Shader.PropertyToID("_DXREyePosL");
+    static readonly int s_EyePosRId = Shader.PropertyToID("_DXREyePosR");
 
     [Tooltip("Master enable. Press C at runtime to toggle.")]
     public bool clipEnabled = true;
@@ -97,8 +99,8 @@ public class ForegroundClipURPDriver : MonoBehaviour
         if (m_Feature == null) m_Feature = DisplayXRFeature.Instance;
         if (m_Feature == null) return;
 
-        if (!m_Feature.GetStereoMatrices(out _, out Matrix4x4 leftProj,
-                                         out _, out Matrix4x4 rightProj))
+        if (!m_Feature.GetStereoMatrices(out Matrix4x4 leftView, out Matrix4x4 leftProj,
+                                         out Matrix4x4 rightView, out Matrix4x4 rightProj))
             return;
 
         float leftFar = FarOf(leftProj);
@@ -113,6 +115,19 @@ public class ForegroundClipURPDriver : MonoBehaviour
         Shader.SetGlobalVector(s_ForegroundFarId,
             new Vector4(leftFar, rightFar, enable, 0f));
 
+        // Per-eye selection: unity_StereoEyeIndex is USELESS here — in multipass
+        // (which the Kooima path forces) URP's TextureXR.hlsl #defines it to a literal
+        // 0, so a shader-side `eyeIndex==0 ? farL : farR` would feed BOTH eyes the
+        // LEFT far — the exact single-far bug this approach exists to kill (invisible
+        // on-axis where farL==farR, wrong off-axis). Instead publish each eye's WORLD
+        // position; the shader picks the far whose eye is nearest the current eye's
+        // UNITY_MATRIX_I_V translation (per-eye-correct in multipass). The positions
+        // must match what the shader sees, i.e. the rig's FlipViewZ'd view matrices.
+        Matrix4x4 invL = FlipViewZ(leftView).inverse;
+        Matrix4x4 invR = FlipViewZ(rightView).inverse;
+        Shader.SetGlobalVector(s_EyePosLId, invL.GetColumn(3));
+        Shader.SetGlobalVector(s_EyePosRId, invR.GetColumn(3));
+
         if (diagnosticLog)
         {
             m_LogTimer += Time.deltaTime;
@@ -120,8 +135,11 @@ public class ForegroundClipURPDriver : MonoBehaviour
             {
                 m_LogTimer = 0f;
                 float diff = Mathf.Abs(leftFar - rightFar);
+                // Eye separation proves the per-eye discriminator has signal even when
+                // Δfar≈0 on-axis (eyes are ~IPD apart regardless of head position).
+                float ipd = Vector3.Distance(invL.GetColumn(3), invR.GetColumn(3));
                 Debug.Log($"[ForegroundClipURP] farL={leftFar:F4} farR={rightFar:F4} " +
-                          $"Δ={diff * 1000f:F1}mm enable={enable:F0}");
+                          $"Δ={diff * 1000f:F1}mm eyeSep={ipd * 1000f:F1}mm enable={enable:F0}");
             }
         }
     }
@@ -144,5 +162,18 @@ public class ForegroundClipURPDriver : MonoBehaviour
         float denom = p.m22 + 1f;
         if (Mathf.Abs(denom) < 1e-6f) return -1f;
         return p.m23 / denom;
+    }
+
+    // Negate column 2 (Z) of a view matrix — the OpenXR→Unity handedness flip the
+    // rig (DisplayXRDisplay/DisplayXRCamera) applies before SetStereoViewMatrix.
+    // We mirror it so the eye world positions we publish match the UNITY_MATRIX_I_V
+    // the clip shader reads.
+    static Matrix4x4 FlipViewZ(Matrix4x4 m)
+    {
+        m.m02 = -m.m02;
+        m.m12 = -m.m12;
+        m.m22 = -m.m22;
+        m.m32 = -m.m32;
+        return m;
     }
 }

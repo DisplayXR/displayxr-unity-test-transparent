@@ -50,6 +50,11 @@ Shader "DisplayXR/ForegroundClipURP"
 
             // x = left eye far_eff, y = right eye far_eff, z = enable (0/1), w = unused.
             float4 _DXRForegroundFar;
+            // World positions of the two eyes (w unused), published by the driver from
+            // the rig's FlipViewZ'd view matrices. Used to pick which eye's far applies
+            // in MULTIPASS, where unity_StereoEyeIndex is a compile-time 0 (see below).
+            float4 _DXREyePosL;
+            float4 _DXREyePosR;
 
             half4 Frag(Varyings input) : SV_Target
             {
@@ -64,13 +69,19 @@ Shader "DisplayXR/ForegroundClipURP"
                 // View-space distance from the eye to this fragment, in world units.
                 // Background (no geometry) reads the far plane → very large eyeZ →
                 // clipped to transparent, which is already what the empty overlay wants.
+                // _ZBufferParams is per-eye in multipass, so eyeZ is per-eye-correct.
                 float rawDepth = SampleSceneDepth(input.texcoord);
                 float eyeZ = LinearEyeDepth(rawDepth, _ZBufferParams);
 
-                // Per-eye far: multipass renders each eye in its own pass, so
-                // unity_StereoEyeIndex selects which eye's foreground far applies.
-                float farEff = (unity_StereoEyeIndex == 0) ? _DXRForegroundFar.x
-                                                           : _DXRForegroundFar.y;
+                // Per-eye far. unity_StereoEyeIndex is NOT usable: in multipass (forced
+                // by the Kooima path) URP's TextureXR.hlsl #defines it to a literal 0,
+                // so it can never select the right eye. UNITY_MATRIX_I_V *is* per-eye in
+                // multipass, so identify the current eye by its world position and pick
+                // the nearer of the driver's two published eye positions.
+                float3 curEye = mul(UNITY_MATRIX_I_V, float4(0.0, 0.0, 0.0, 1.0)).xyz;
+                float dL = dot(curEye - _DXREyePosL.xyz, curEye - _DXREyePosL.xyz);
+                float dR = dot(curEye - _DXREyePosR.xyz, curEye - _DXREyePosR.xyz);
+                float farEff = (dL <= dR) ? _DXRForegroundFar.x : _DXRForegroundFar.y;
 
                 // Behind the virtual display plane → cut it away (color AND alpha
                 // zeroed; alpha-only left the geometry visible — the #129 failure).
