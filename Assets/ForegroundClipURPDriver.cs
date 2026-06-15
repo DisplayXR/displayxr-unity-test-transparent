@@ -31,8 +31,10 @@ public class ForegroundClipURPDriver : MonoBehaviour
     static readonly int s_EyePosLId = Shader.PropertyToID("_DXREyePosL");
     static readonly int s_EyePosRId = Shader.PropertyToID("_DXREyePosR");
 
-    [Tooltip("Master enable. Press C at runtime to toggle.")]
-    public bool clipEnabled = true;
+    [Tooltip("Master enable. Press C at runtime to toggle. Starts OFF so the first "
+           + "look tests pure projection + transparency (the off-axis isolation test); "
+           + "press C to turn the per-eye foreground clip on.")]
+    public bool clipEnabled = false;
 
     [Tooltip("Far plane (m) forced onto the rig camera so EACH eye renders the full "
            + "scene; the per-eye clip then happens in the shader. Prevents the rig's "
@@ -140,6 +142,8 @@ public class ForegroundClipURPDriver : MonoBehaviour
                 float ipd = Vector3.Distance(invL.GetColumn(3), invR.GetColumn(3));
                 Debug.Log($"[ForegroundClipURP] farL={leftFar:F4} farR={rightFar:F4} " +
                           $"Δ={diff * 1000f:F1}mm eyeSep={ipd * 1000f:F1}mm enable={enable:F0}");
+                // Geometry/projection asymmetry is logged by the shared KooimaProbe
+                // (same format in both test repos for a direct diff).
             }
         }
     }
