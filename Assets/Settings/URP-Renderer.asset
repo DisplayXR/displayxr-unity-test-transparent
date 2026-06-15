@@ -85,7 +85,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6baa32f956dd99c4f80b096a8ff70e09, type: 3}
+  m_Script: {fileID: 11500000, guid: 087af0c654ae45708c9052f8d1e9499a, type: 3}
   m_Name: Kooima Projection Fix
-  m_EditorClassIdentifier: Assembly-CSharp::KooimaProjectionFixFeature
+  m_EditorClassIdentifier: com.displayxr.unity.urp::DisplayXR.URP.KooimaProjectionFixFeature
   m_Active: 1
