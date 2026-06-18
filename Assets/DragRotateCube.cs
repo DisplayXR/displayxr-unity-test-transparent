@@ -16,6 +16,7 @@
 // after a cycle.
 
 using UnityEngine;
+using UnityEngine.InputSystem;
 using DisplayXR;
 
 public class DragRotateCube : MonoBehaviour
@@ -23,13 +24,42 @@ public class DragRotateCube : MonoBehaviour
     public Renderer target;
     public float degreesPerPixel = 1f;
 
+    [Tooltip("Key that resets the tiger to its initial orientation.")]
+    public Key resetKey = Key.Space;
+
     private bool m_Dragging;
     private Animator m_Animator;
     private bool m_AnimatorWasEnabled;
     private DisplayXRTransparentOverlay m_BoundOverlay;
+    private Quaternion m_InitialRotation;
+
+    void Awake()
+    {
+        m_InitialRotation = transform.rotation;
+    }
 
     void Update()
     {
+        // Spacebar resets the tiger view to its initial orientation. Read via
+        // Keyboard.current (the cloaked Unity HWND still gets raw keyboard via
+        // the focus hook, same path the B decoration toggle uses).
+        var kb = Keyboard.current;
+        if (kb != null && kb[resetKey].wasPressedThisFrame)
+        {
+            transform.rotation = m_InitialRotation;
+            // If reset lands mid-drag, end it and restore the animator.
+            if (m_Dragging)
+            {
+                m_Dragging = false;
+                if (m_Animator != null && m_AnimatorWasEnabled)
+                {
+                    m_Animator.enabled = true;
+                    m_AnimatorWasEnabled = false;
+                }
+            }
+            Debug.Log("[DragRotateCube] tiger view reset (Space)");
+        }
+
         // Re-bind to the currently active rig's overlay if it changed.
         var active = GetActiveOverlay();
         if (active != m_BoundOverlay)
@@ -46,14 +76,6 @@ public class DragRotateCube : MonoBehaviour
                 Debug.Log($"[DragRotateCube] Bound to active rig {active.gameObject.name}");
             }
             m_BoundOverlay = active;
-        }
-
-        // Region editor owns the mouse (Layout mode or a window translate)?
-        // Don't also rotate the tiger while the user edits the window.
-        if (TigerSpeechBubble.SuppressSceneInput)
-        {
-            if (m_Dragging) m_Dragging = false; // cancel any in-flight drag
-            return;
         }
 
         // Cursor over the wsui HUD? Let the UI own all interaction.
@@ -96,8 +118,6 @@ public class DragRotateCube : MonoBehaviour
         // both fire causes the tiger to rotate-then-reset as the window
         // chases the cursor during right-drag.
         if (m_BoundOverlay == null || !m_BoundOverlay.IsLeftPressed) return;
-        // Suppress while the region editor owns the mouse (Layout mode / translate).
-        if (TigerSpeechBubble.SuppressSceneInput) return;
         // Suppress when cursor is over the wsui HUD — the overlay's hit-test
         // is screen-space and doesn't know the HUD is occluding the tiger.
         if (DisplayXRWindowSpaceUI.IsCursorOverInteractive) return;

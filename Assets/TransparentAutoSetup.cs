@@ -26,11 +26,14 @@ public static class TransparentAutoSetup
     private static void RequestTransparentSession()
     {
         DisplayXRTransparentOverlay.RequestTransparentSession();
-        // (#131) Same early window: ask for the overlay to be born covering the
-        // monitor so the fullscreen 2D-surround demo needs no post-creation
-        // resize (which recreates the swapchain = a startup flash/freeze).
-        DisplayXRTransparentOverlay.RequestFullscreenOverlay();
-        Debug.Log("[TransparentAutoSetup] Requested runtime transparent-background mode (alpha-native) + fullscreen overlay.");
+        // Avatar-style windowing is applied to the transparent OVERLAY (a
+        // top-level WS_EX_NOREDIRECTIONBITMAP window the runtime renders into,
+        // with Unity cloaked behind it) — NOT Unity's real HWND, which can't be
+        // made transparent (its opaque swapchain shows through). The overlay is
+        // born windowed (no RequestFullscreenOverlay) so it's a normal movable
+        // window; press B to toggle its decoration. Region click-through +
+        // right-drag move are already provided by DisplayXRTransparentOverlay.
+        Debug.Log("[TransparentAutoSetup] Requested runtime transparent-background mode (alpha-native); avatar windowing on the overlay.");
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
