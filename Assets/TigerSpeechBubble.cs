@@ -102,8 +102,11 @@ public class TigerSpeechBubble : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void SeedLaunchZone()
     {
-        int panelW = Screen.width  > 0 ? Screen.width  : kDefaultPanelW;
-        int panelH = Screen.height > 0 ? Screen.height : kDefaultPanelH;
+        // Use the persisted window size (remembered by DemoWindowController) so
+        // the zone-sized eye RT matches the restored window; fall back to Screen.*
+        // then the born-windowed default.
+        int panelW = PlayerPrefs.GetInt("dxr_winW", Screen.width  > 0 ? Screen.width  : kDefaultPanelW);
+        int panelH = PlayerPrefs.GetInt("dxr_winH", Screen.height > 0 ? Screen.height : kDefaultPanelH);
         // Use the persisted split (set in Layout mode) so the zone-sized eye RT
         // matches the chosen split at launch; fall back to the avatar default.
         float frac = PlayerPrefs.GetFloat(kBandPrefKey, kDefaultBubbleBandFraction);
