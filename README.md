@@ -35,6 +35,38 @@ in one demo doesn't mask the others:
 | [displayxr-unity-test-2d-ui](https://github.com/DisplayXR/displayxr-unity-test-2d-ui) | `XrCompositionLayerWindowSpaceEXT` 2D UI overlay (`DisplayXRWindowSpaceUI`) | URP |
 | [displayxr-unity-test-transparent](https://github.com/DisplayXR/displayxr-unity-test-transparent) (you are here) | Alpha-native transparent overlay (`DisplayXRTransparentOverlay`) + display zones / Local2D bubble | URP (`main`); BiRP on `legacy-birp` |
 
+## Get started
+
+**Prerequisite for everyone:** install the **DisplayXR runtime bundle** first —
+the [`displayxr-installer`](https://github.com/DisplayXR/displayxr-installer/releases/latest)
+one-click installer (`DisplayXRBundle-X.Y.Z.exe`), which sets up the runtime,
+Shell, and Leia SR plug-in at matched versions. This app needs **runtime ≥ 1.22.0**;
+for the smooth **V** 2D⇄3D transition use a bundle with **runtime ≥ 1.23.0**
+(current bundle is fine). You also need a **Leia SR eye-tracked display**.
+
+### Just want to try it (prebuilt)
+
+1. Install the DisplayXR bundle (above).
+2. Download the latest app installer from
+   [**Releases**](https://github.com/DisplayXR/displayxr-unity-test-transparent/releases/latest)
+   — `DisplayXR-Unity-TestTransparent-Setup-X.Y.Z.exe` — and run it (it hard-prereqs
+   the runtime and aborts gracefully if it's missing/too old).
+3. Launch from the DisplayXR Shell tile (or the install dir). See [**Controls**](#controls).
+
+→ More detail in [Installing the prebuilt app](#installing-the-prebuilt-app).
+
+### Want to build it (developers)
+
+1. Install the DisplayXR bundle (above).
+2. Clone this repo — the default **`main`** branch is the URP + display-zones build.
+   (The old Built-in/BiRP variant is on the **`legacy-birp`** branch.)
+3. Open in **Unity 6000.4.0f1**; Package Manager resolves the plugin via `#upm`
+   (v1.21.0+). Confirm Graphics API = **Direct3D12**.
+4. Build via `unity_build.bat` (or *File → Build Settings → Build*), or run the
+   in-editor **Window → DisplayXR → Preview Window → Start**.
+
+→ Full developer walkthrough in [**Partner setup**](#partner-setup).
+
 ## Partner setup
 
 `main` is the **URP consolidated + display-zones variant**: the URP off-axis
@@ -212,16 +244,18 @@ before committing.
 
 1. Open the project in Unity Hub. First import takes a few minutes.
 2. Open `Assets/CubeTest.unity`.
-3. **Build a standalone** (`File → Build Settings → Build`, target `Builds/Win64/DisplayXR-test/`). Editor Play
-   Mode shows the scene cleared to transparent but does **not** apply the
-   native window restyling — that's a build-only path.
-4. Run the resulting `.exe` (or `.app`) on a Leia SR machine.
+3. **Build a standalone** — run `unity_build.bat` (one-command headless build,
+   output lands at `Builds/Win64/DisplayXR-test-transparent/`), or *File → Build
+   Settings → Build* targeting that same folder. Editor Play Mode shows the scene
+   cleared to transparent but does **not** apply the native window restyling —
+   that's a build-only path.
+4. Run the resulting `.exe` on a Leia SR machine.
 
 ## Installing the prebuilt app
 
 End-users typically don't build from source. The [latest release](https://github.com/DisplayXR/displayxr-unity-test-transparent/releases/latest) ships a Windows installer (`DisplayXR-Unity-TestTransparent-Setup-X.Y.Z.exe`) that:
 
-- Hard-prereqs the DisplayXR runtime (requires v1.7.0+ for the alpha-native path; aborts gracefully if older or missing).
+- Hard-prereqs the DisplayXR runtime (this build requires **v1.22.0+** for the display-zones / Local2D path — **v1.23.0+** for the smooth V 2D⇄3D switch; aborts gracefully if older or missing). Install it via the [DisplayXR bundle](https://github.com/DisplayXR/displayxr-installer/releases/latest).
 - Installs the Player to `C:\Program Files\DisplayXR\Unity\TestTransparent\`.
 - Registers the app with the DisplayXR Shell launcher (drops a `.displayxr.json` manifest + icons under `%ProgramData%\DisplayXR\apps\`) so it appears as a tile.
 
@@ -231,7 +265,7 @@ After installing, launch via the DisplayXR Shell tile or directly from the insta
 
 Requires [NSIS](https://nsis.sourceforge.io/) installed at `C:\Program Files (x86)\NSIS\`.
 
-1. Build the Unity Player (step 3 above) — output must land at `Builds/Win64/DisplayXR-test/`.
+1. Build the Unity Player (step 3 above) — output must land at `Builds/Win64/DisplayXR-test-transparent/`.
 2. From a Developer Command Prompt: `cd installer && build-installer.bat`.
 3. Output: `installer/DisplayXR-Unity-TestTransparent-Setup-X.Y.Z.exe`. Override the version with `set VERSION=1.x.y` before invoking.
 
