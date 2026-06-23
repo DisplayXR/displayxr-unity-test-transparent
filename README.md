@@ -40,9 +40,10 @@ in one demo doesn't mask the others:
 **Prerequisite for everyone:** install the **DisplayXR runtime bundle** first —
 the [`displayxr-installer`](https://github.com/DisplayXR/displayxr-installer/releases/latest)
 one-click installer (`DisplayXRBundle-X.Y.Z.exe`), which sets up the runtime,
-Shell, and Leia SR plug-in at matched versions. This app needs **runtime ≥ 1.22.0**;
+Shell, and SR-display plug-in at matched versions. This app needs **runtime ≥ 1.22.0**;
 for the smooth **V** 2D⇄3D transition use a bundle with **runtime ≥ 1.23.0**
-(current bundle is fine). You also need a **Leia SR eye-tracked display**.
+(current bundle is fine). You also need an **eye-tracked 3D (light-field) display**
+supported by the DisplayXR runtime.
 
 ### Just want to try it (prebuilt)
 
@@ -90,7 +91,7 @@ Settings, or material conversion is needed.**
    transition snaps; everything else works on v1.22.0.)*
 2. **Unity 6 (`6000.4.0f1`).** The project is URP 17.0.4 and the off-axis fix uses
    URP 17 RenderGraph — it will not compile/run on older Unity/URP.
-3. **A DisplayXR / Leia eye-tracked display, with a tracked face** (sit in front of
+3. **A DisplayXR-supported eye-tracked 3D display, with a tracked face** (sit in front of
    the eye tracker). The per-eye foreground clip degenerates without a real face.
 
 ### Steps
@@ -147,16 +148,21 @@ the demo's `Assets/` scripts, not the plugin (the plugin only exposes window
 
 | Action | Control | Notes |
 |---|---|---|
-| **Move window** | **Right-mouse drag** (anywhere on the tiger / interior) | Capture-based `SetWindowPos`; the only drag the Leia SR weaver doesn't eat. |
+| **Move window** | **Right-mouse drag** (anywhere on the tiger / interior) | Capture-based `SetWindowPos`; the only drag the display's weaving compositor doesn't eat. |
 | **Resize window** | **Ctrl + arrow keys** | →/← = width, ↑/↓ = height, 80 px per press. |
 | **Quit** | **Esc** (also the window **X** button / **Alt+F4**) | — |
 
-> **Why keyboard resize, not mouse-drag edges?** The Leia SR weaver installs a
-> WndProc subclass on the overlay HWND and **swallows mouse button-downs near the
-> window frame** (the overlay must stay non-activating so Unity keeps input
-> focus). Every mouse-edge resize approach dies on that, so resize is keyboard
-> (`displayxr_resize_overlay`, a direct `SetWindowPos` that's never intercepted —
-> the same mechanism right-drag MOVE uses). There is no OS title bar by design.
+> **Why the overlay, and why keyboard resize instead of mouse-drag edges?**
+> Per-pixel-alpha transparent output needs a layered DirectComposition window,
+> which Unity's own player window can't be — Unity creates and owns its standalone
+> window handle. So the plugin renders into a **separate transparent overlay
+> window** (with Unity's own window cloaked off-screen). That overlay has to stay
+> **non-activating** so Unity keeps keyboard/input focus, and the 3D display's
+> weaving compositor installs a window-procedure subclass on it that **swallows
+> mouse button-downs near the window frame** — so OS edge-resize and title-bar
+> drag never fire. The workaround: **move** is a capture-based right-drag and
+> **resize** is keyboard, both issued via a direct `SetWindowPos` the subclass
+> doesn't intercept. There is no OS title bar by design.
 
 ### Display / render mode
 
@@ -209,7 +215,7 @@ land off-screen until you move it once, which then persists.)
 ## Requirements
 
 - **Unity 6000.3 LTS** (Unity 6) or newer
-- A **Leia SR Windows** machine (or recent Mac) for end-to-end verification
+- An **eye-tracked 3D display on Windows** (or recent Mac) for end-to-end verification
   — the native window restyling path doesn't run in the editor preview,
   only in a standalone build
 - The DisplayXR runtime installed (via the
@@ -249,7 +255,7 @@ before committing.
    Settings → Build* targeting that same folder. Editor Play Mode shows the scene
    cleared to transparent but does **not** apply the native window restyling —
    that's a build-only path.
-4. Run the resulting `.exe` on a Leia SR machine.
+4. Run the resulting `.exe` on a machine with an eye-tracked 3D display.
 
 ## Installing the prebuilt app
 
