@@ -15,6 +15,13 @@ through to whatever desktop window is behind.
 
 **Render pipeline:** Built-in (BiRP).
 
+> **This is the `legacy-birp` branch** — the original Built-in (BiRP)
+> transparent-overlay baseline, kept for reference and regression. The repo's
+> **`main`** branch has moved on to the **URP + `XR_EXT_display_zones` / Local2D**
+> build (tiger in a 3D zone + a 2D speech bubble in a floating window; released as
+> v2.0.0+). Use `main` for current work; use this branch only if you specifically
+> need the BiRP path.
+
 **Sibling test projects** — each repo focuses on one feature so a regression
 in one demo doesn't mask the others:
 
