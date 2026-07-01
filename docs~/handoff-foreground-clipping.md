@@ -16,7 +16,7 @@ In transparent-overlay mode, render only the foreground portion of the scene —
 
 For `DisplayXRDisplay` rig:
 - The parent transform IS the virtual display surface (per `DisplayXRDisplay.cs` class doc).
-- The runtime's `xrLocateViews` returns eye poses in display-relative coords. `DisplayXRFeature.LeftEyePosition.z` / `RightEyePosition.z` are the raw values (display-relative), **stable** regardless of where the camera GameObject sits in world. For the typical Leia setup, eye.z is ~0.6 m.
+- The runtime's `xrLocateViews` returns eye poses in display-relative coords. `DisplayXRFeature.LeftEyePosition.z` / `RightEyePosition.z` are the raw values (display-relative), **stable** regardless of where the camera GameObject sits in world. For the typical Leia SR setup, eye.z is ~0.6 m.
 - The eye looks at -Z (OpenXR convention). So the display plane is at eye-distance = `|eye.z|` in the eye-forward direction.
 
 When the user presses W to push the camera, the world-Z eye position grows. But the camera-relative eye Z (= raw `LeftEyePosition.z`) stays at ~0.6 — it's how far the viewer's head is from the (also-moving) display.
