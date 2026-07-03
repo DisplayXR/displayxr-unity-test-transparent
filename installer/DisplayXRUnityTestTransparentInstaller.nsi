@@ -56,7 +56,7 @@ ShowUninstDetails show
 ; XR_EXT_local_3d_zone and XR_EXT_display_info plus the alpha-native ALPHA_BLEND
 ; compose-under-bg DP path — i.e. runtime 1.22.0+ (hardware-verified on 1.22.0).
 ; Older runtimes fall back to raw passthrough (no stereo / no zones).
-!define MIN_RUNTIME_VERSION "1.22.0"
+!define MIN_RUNTIME_VERSION "1.26.1"
 
 ;--------------------------------
 ; UI
